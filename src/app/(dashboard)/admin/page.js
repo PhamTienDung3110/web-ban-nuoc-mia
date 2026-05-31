@@ -4,6 +4,7 @@ import Customer from '@/models/Customer';
 import Account from '@/models/Account';
 import CustomPrice from '@/models/CustomPrice';
 import AdminForms from './AdminForms';
+import ProductList from './ProductList';
 import { getSession } from '@/utils/auth';
 import { redirect } from 'next/navigation';
 
@@ -15,7 +16,7 @@ export default async function AdminPage() {
 
   await connectMongo();
   
-  const products = await Product.find({ createdBy: session.userId }).lean();
+  const products = await Product.find({ createdBy: session.userId, isDeleted: { $ne: true } }).lean();
   const customers = await Customer.find({ createdBy: session.userId }).lean();
   const customPrices = await CustomPrice.find({ createdBy: session.userId })
     .populate('customer', 'name')
@@ -33,6 +34,8 @@ export default async function AdminPage() {
         products={products.map(p => ({...p, _id: p._id.toString()}))} 
         customers={customers.map(c => ({...c, _id: c._id.toString()}))} 
       />
+
+      <ProductList products={products.map(p => ({...p, _id: p._id.toString()}))} />
 
       <div className="glass animate-fade-in" style={{ padding: '2rem', marginTop: '2rem' }}>
         <h3 style={{ marginBottom: '1rem', color: 'var(--text-main)' }}>Bảng giá ưu đãi đang áp dụng</h3>

@@ -17,7 +17,7 @@ export default async function SalesPage() {
 
   await connectMongo();
   
-  const products = await Product.find({ createdBy: session.userId }).lean();
+  const products = await Product.find({ createdBy: session.userId, isDeleted: { $ne: true } }).lean();
   const customers = await Customer.find({ createdBy: session.userId }).lean();
   
   const recentSales = await SaleRecord.find({ createdBy: session.userId })

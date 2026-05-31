@@ -74,4 +74,45 @@ export async function addCustomPrice(formData) {
   }
 }
 
+export async function updateProduct(formData) {
+  try {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
 
+    await connectMongo();
+    const id = formData.get('id');
+    await Product.findOneAndUpdate(
+      { _id: id, createdBy: session.userId },
+      {
+        name: formData.get('name'),
+        defaultPrice: parseInt(formData.get('defaultPrice').toString().replace(/\./g, ''), 10),
+        unit: formData.get('unit'),
+      }
+    );
+
+    revalidatePath('/admin');
+    revalidatePath('/sales');
+    return { success: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+export async function deleteProduct(id) {
+  try {
+    const session = await getSession();
+    if (!session) throw new Error('Unauthorized');
+
+    await connectMongo();
+    await Product.findOneAndUpdate(
+      { _id: id, createdBy: session.userId },
+      { isDeleted: true }
+    );
+
+    revalidatePath('/admin');
+    revalidatePath('/sales');
+    return { success: true };
+  } catch (err) {
+    return { error: err.message };
+  }
+}

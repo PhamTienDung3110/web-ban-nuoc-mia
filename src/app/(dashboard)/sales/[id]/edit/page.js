@@ -19,7 +19,7 @@ export default async function EditSalePage({ params }) {
   const sale = await SaleRecord.findById(id).lean();
   if (!sale || sale.createdBy.toString() !== session.userId) return notFound();
 
-  const products = await Product.find({ createdBy: session.userId }).lean();
+  const products = await Product.find({ createdBy: session.userId, isDeleted: { $ne: true } }).lean();
   const customers = await Customer.find({ createdBy: session.userId }).lean();
 
   return (
