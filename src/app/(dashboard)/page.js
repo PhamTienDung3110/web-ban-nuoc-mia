@@ -2,12 +2,13 @@ import connectMongo from '@/utils/db';
 import mongoose from 'mongoose';
 import SaleRecord from '@/models/SaleRecord';
 import ExpenseRecord from '@/models/ExpenseRecord';
+import DateFilterCard from './DateFilterCard';
 import { getSession } from '@/utils/auth';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-async function getDashboardData(userId) {
+async function getDashboardData(userId, customDateStr) {
   await connectMongo();
   
   const now = new Date();
@@ -27,7 +28,19 @@ async function getDashboardData(userId) {
   const endOfYear = new Date(startOfYear);
   endOfYear.setFullYear(endOfYear.getFullYear() + 1);
 
+  // Custom Date
+  let startOfCustom, endOfCustom;
+  if (customDateStr) {
+    const customDate = new Date(customDateStr);
+    if (!isNaN(customDate.getTime())) {
+      startOfCustom = new Date(customDate.getFullYear(), customDate.getMonth(), customDate.getDate());
+      endOfCustom = new Date(startOfCustom);
+      endOfCustom.setDate(endOfCustom.getDate() + 1);
+    }
+  }
+
   const getStats = async (start, end) => {
+    if (!start || !end) return { revenue: 0, cost: 0, profit: 0 };
     const objectId = new mongoose.Types.ObjectId(userId);
     const sales = await SaleRecord.aggregate([
       { $match: { date: { $gte: start, $lt: end }, createdBy: objectId } },
@@ -44,13 +57,14 @@ async function getDashboardData(userId) {
     return { revenue, cost, profit };
   };
 
-  const [today, month, year] = await Promise.all([
+  const [today, month, year, custom] = await Promise.all([
     getStats(startOfDay, endOfDay),
     getStats(startOfMonth, endOfMonth),
-    getStats(startOfYear, endOfYear)
+    getStats(startOfYear, endOfYear),
+    getStats(startOfCustom, endOfCustom)
   ]);
 
-  return { today, month, year };
+  return { today, month, year, custom };
 }
 
 function StatCard({ title, data }) {
@@ -77,11 +91,13 @@ function StatCard({ title, data }) {
   );
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage(props) {
+  const searchParams = await props.searchParams;
+  const dateParam = searchParams?.date || null;
   const session = await getSession();
   if (!session) redirect('/login');
 
-  const data = await getDashboardData(session.userId);
+  const data = await getDashboardData(session.userId, dateParam);
 
   return (
     <div>
@@ -92,6 +108,7 @@ export default async function DashboardPage() {
         <StatCard title="Hôm Nay" data={data.today} />
         <StatCard title="Tháng Này" data={data.month} />
         <StatCard title="Năm Nay" data={data.year} />
+        <DateFilterCard data={data.custom} initialDate={dateParam} />
       </div>
     </div>
   );
